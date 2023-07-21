@@ -1,0 +1,16 @@
+syntax = "proto2";
+
+package dtmi_protobufTest_TinykubePrototype__1;
+
+option java_multiple_files = true;
+option java_package = "dtmi_protobufTest_TinykubePrototype__1";
+
+option csharp_namespace = "dtmi_protobufTest_TinykubePrototype__1";
+
+import "Array_AddWasmModule_Request_WasmModuleContent.proto";
+
+message Object_AddWasmModule_Request {
+    optional string wasmModuleName = 1; // The 'wasmModuleName' Field.
+    optional sint32 wasmModuleSize = 2; // The 'wasmModuleSize' Field.
+    optional Array_AddWasmModule_Request_WasmModuleContent wasmModuleContent = 3; // The 'wasmModuleContent' Field.
+}

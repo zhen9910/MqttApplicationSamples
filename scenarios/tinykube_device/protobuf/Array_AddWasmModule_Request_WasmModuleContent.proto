@@ -1,0 +1,13 @@
+syntax = "proto2";
+
+package dtmi_protobufTest_TinykubePrototype__1;
+
+option java_multiple_files = true;
+option java_package = "dtmi_protobufTest_TinykubePrototype__1";
+
+option csharp_namespace = "dtmi_protobufTest_TinykubePrototype__1";
+
+
+message Array_AddWasmModule_Request_WasmModuleContent {
+    repeated sint32 Value = 1 [packed = true];
+}

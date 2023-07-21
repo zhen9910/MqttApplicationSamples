@@ -18,10 +18,7 @@
 #define ADDRESS     "tcp://broker.hivemq.com"
 #define CLIENTID    "f9e57487-616a-4725-aa9f-ee88b611228a"
 
-//#define TOPIC_CREATE_WAMR_RUNTIME_REQ "tinykube/f9e57487-616a-4725-aa9f-ee88b611228a/command/createWamrRuntime/"
 #define TOPIC_CREATE_WAMR_RUNTIME_REQ "tinykube/+/command/createWamrRuntime"
-#define TOPIC_CREATE_WAMR_RUNTIME_RSP "tinykube/f9e57487-616a-4725-aa9f-ee88b611228a/command/createWamrRuntime/__for_30657190-2dea-42dd-a438-0b77483446ae"
-// #define TOPIC_CREATE_WAMR_RUNTIME_RSP "tinykube/+/command/createWamrRuntime/__for_30657190-2dea-42dd-a438-0b77483446ae"
 
 #define QOS_LEVEL 1
 #define MQTT_VERSION MQTT_PROTOCOL_V5

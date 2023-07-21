@@ -37,6 +37,16 @@
             }
         },
         {
+            "name": "tinykube_device",
+            "displayName": "tinykube device",
+            "binaryDir": "${sourceDir}/scenarios/${presetName}/build",
+            "generator": "Ninja",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "PRESET_PATH": "${sourceDir}/scenarios/${presetName}"
+            }
+        },
+        {
             "name": "mqtt_client_extension_tests",
             "displayName": "MQTT Client Extension Tests",
             "binaryDir": "${sourceDir}/mqttclients/c/tests/build",
@@ -73,6 +83,14 @@
             "targets": [
                 "command_server",
                 "command_client"
+            ]
+        },
+        {
+            "name": "tinykube_device",
+            "displayName": "tinykube device",
+            "configurePreset": "tinykube_device",
+            "targets": [
+                "tinykube_device"
             ]
         }
     ],

@@ -361,4 +361,4 @@ MigrationBackup/
 *.egg-info/
 
 # Generated C protobuf files
-*.pb-c.*
+# *.pb-c.*

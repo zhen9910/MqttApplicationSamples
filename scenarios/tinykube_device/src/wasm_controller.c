@@ -6,6 +6,62 @@
 #include "wasm_export.h"
 #include "bh_read_file.h"
 
+enum WAMR_RUNTIME_STATUS {
+    WAMR_RUNTIME_NOT_CREATED = 0,
+    WAMR_RUNTIME_CREATED = 1,
+    // WAMR_RUNTIME_RUNNING = 2,
+    // WAMR_RUNTIME_STOPPED = 3,
+};
+
+struct wamr_runtime_info {
+    char *heap_buf;
+    uint32_t heap_size;
+    enum WAMR_RUNTIME_STATUS status;
+};
+
+static struct wamr_runtime_info wamr_runtime_instance;
+
+
+int create_wamr_runtime(uint32 heap_size)
+{
+    if (wamr_runtime_instance.status != WAMR_RUNTIME_NOT_CREATED) {
+        printf("wamr runtime has been created already.\n");
+        return -1;
+    }
+    wamr_runtime_instance.heap_buf = malloc(heap_size);
+    if (wamr_runtime_instance.heap_buf == NULL) {
+        printf("malloc heap buf failed.\n");
+        return -1;
+    }
+    wamr_runtime_instance.heap_size = heap_size;
+
+    // static char global_heap_buf[512 * 1024];
+    RuntimeInitArgs init_args;
+    memset(&init_args, 0, sizeof(RuntimeInitArgs));
+
+    init_args.mem_alloc_type = Alloc_With_Pool;
+    init_args.mem_alloc_option.pool.heap_buf = wamr_runtime_instance.heap_buf;
+    init_args.mem_alloc_option.pool.heap_size = heap_size;
+
+    if (!wasm_runtime_full_init(&init_args)) {
+        printf("Init runtime environment failed.\n");
+        free(wamr_runtime_instance.heap_buf);
+        wamr_runtime_instance.heap_buf = NULL;
+        wamr_runtime_instance.heap_size = 0;
+        return -1;
+    }
+    wamr_runtime_instance.status = WAMR_RUNTIME_CREATED;
+    printf("\n\n------ Created wamr runtime with heapsize %d bytes -------.\n\n", heap_size);
+    return 0;
+}
+
+int destroy_wamr_runtime()
+{
+    printf("destroy_wasm_runtime().\n");
+    wasm_runtime_destroy();
+    return 0;
+}
+
 int
 run_wasm_module(const char *wasm_path)
 {
@@ -92,31 +148,5 @@ fail:
 int stop_wasm_module()
 {
     printf("stop_wasm_module().\n");
-    return 0;
-}
-
-int create_wasm_runtime()
-{
-    printf("create_wasm_runtime().\n");
-    static char global_heap_buf[512 * 1024];
-    RuntimeInitArgs init_args;
-    memset(&init_args, 0, sizeof(RuntimeInitArgs));
-
-    init_args.mem_alloc_type = Alloc_With_Pool;
-    init_args.mem_alloc_option.pool.heap_buf = global_heap_buf;
-    init_args.mem_alloc_option.pool.heap_size = sizeof(global_heap_buf);
-
-    if (!wasm_runtime_full_init(&init_args)) {
-        printf("Init runtime environment failed.\n");
-        return -1;
-    }
-
-    return 0;
-}
-
-int destroy_wasm_runtime()
-{
-    printf("destroy_wasm_runtime().\n");
-    wasm_runtime_destroy();
     return 0;
 }

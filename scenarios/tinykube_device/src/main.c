@@ -43,8 +43,11 @@
     }                                                                          \
   } while (0)
 
+int create_wasm_runtime();
+int destroy_wasm_runtime();
+
 // Function to execute unlock request. For this sample, it just prints the request information.
-bool process_create_wamr_runtime_command_request(char* payload, int payload_length)
+int process_create_wamr_runtime_command_request(char* payload, int payload_length)
 {
 
   DtmiProtobufTestTinykubePrototype1__CreateWamrRuntimeCommandRequest
@@ -54,13 +57,14 @@ bool process_create_wamr_runtime_command_request(char* payload, int payload_leng
   if (createWamrRuntimeCommandRequest == NULL)
   {
       fprintf(stderr, "error unpacking protobuf\n");
-      return false;
+      return -1;
   }
 
   printf("   message: heapsize = %d\n", createWamrRuntimeCommandRequest->heapsize);
   LOG_INFO(SERVER_LOG_TAG, "createWamrRuntimeCommandRequest successfully received");
   dtmi_protobuf_test__tinykube_prototype__1__create_wamr_runtime_command_request__free_unpacked(createWamrRuntimeCommandRequest, NULL);
-  return true;
+  int rst = create_wasm_runtime();
+  return rst;
 }
 
 // Custom callback for when a message is received.
@@ -76,17 +80,16 @@ void handle_message(
   mosquitto_property* response_props = NULL;
 
   printf("Received message on topic %s\n", message->topic);
-  bool command_succeed = process_create_wamr_runtime_command_request(message->payload, message->payloadlen);
+  int command_rst = process_create_wamr_runtime_command_request(message->payload, message->payloadlen);
 
   DtmiProtobufTestTinykubePrototype1__CreateWamrRuntimeCommandResponse
     createWamrRuntimeCommandResponse = DTMI_PROTOBUF_TEST__TINYKUBE_PROTOTYPE__1__CREATE_WAMR_RUNTIME_COMMAND_RESPONSE__INIT;  // Default value
   createWamrRuntimeCommandResponse.has_result = 1;
-  // createWamrRuntimeCommandResponse.result = 1000;
   createWamrRuntimeCommandResponse.result = 0;
 
   void* payload_buf;
   unsigned proto_payload_len;
-  if (command_succeed == false)
+  if (command_rst)
   {
     createWamrRuntimeCommandResponse.result = 1001;
   }

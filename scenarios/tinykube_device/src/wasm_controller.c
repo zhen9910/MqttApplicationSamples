@@ -57,8 +57,16 @@ int create_wamr_runtime(uint32 heap_size)
 
 int destroy_wamr_runtime()
 {
-    printf("destroy_wasm_runtime().\n");
+    if (wamr_runtime_instance.status != WAMR_RUNTIME_CREATED) {
+        printf("wamr runtime has not been created yet.\n");
+        return -1;
+    }
     wasm_runtime_destroy();
+    free(wamr_runtime_instance.heap_buf);
+    wamr_runtime_instance.heap_buf = NULL;
+    wamr_runtime_instance.heap_size = 0;
+    wamr_runtime_instance.status = WAMR_RUNTIME_NOT_CREATED;
+    printf("\n\n------ Destroyed wamr runtime -------.\n\n");
     return 0;
 }
 

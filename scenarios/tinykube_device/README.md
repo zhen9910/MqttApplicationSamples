@@ -6,5 +6,5 @@ sudo apt-get install protobuf-c-compiler libprotobuf-dev
 Then, to generate the files, run:
 ```bash
 # from the root folder
-protoc-c --c_out=./scenarios/tinykube_device/protobuf --proto_path=./scenarios/tinykube_device/protobuf StartWasmModuleCommandRequest.proto StartWasmModuleCommandResponse.proto
+protoc-c --c_out=./scenarios/tinykube_device/protobuf --proto_path=./scenarios/tinykube_device/protobuf StartWasmModuleCommandRequest.proto StartWasmModuleCommandResponse.proto DestroyWamrRuntimeCommandResponse.proto
 ```

@@ -14,6 +14,7 @@
 
 #include "CreateWamrRuntimeCommandRequest.pb-c.h"
 #include "CreateWamrRuntimeCommandResponse.pb-c.h"
+#include "DestroyWamrRuntimeCommandResponse.pb-c.h"
 
 #define ADDRESS     "tcp://broker.hivemq.com"
 #define CLIENTID    "f9e57487-616a-4725-aa9f-ee88b611228a"
@@ -29,21 +30,25 @@
 
 #define COMMAND_CONTENT_TYPE "application/protobuf"
 
-#define RETURN_IF_ERROR(rc)                                                    \
+#define RETURN_IF_FALSE(rc)                                                    \
   do                                                                           \
   {                                                                            \
-    if (rc != MOSQ_ERR_SUCCESS)                                                \
+    if (rc != true)                                                \
     {                                                                          \
-      LOG_ERROR("Failure while sending response: %s", mosquitto_strerror(rc)); \
-      free(response_topic);                                                    \
-      response_topic = NULL;                                                   \
-      free(correlation_data);                                                  \
-      correlation_data = NULL;                                                 \
+      LOG_ERROR("%s(Line %d): Failure while sending response", __func__, __LINE__); \
+      if (response_topic)                                                      \
+      {                                                                        \
+        free(response_topic);                                                  \
+        response_topic = NULL;                                                 \
+      }                                                                        \
+      if (correlation_data)                                                    \
+      {                                                                        \
+        free(correlation_data);                                                \
+        correlation_data = NULL;                                               \
+      }                                                                        \
       mosquitto_property_free_all(&response_props);                            \
       response_props = NULL;                                                   \
-      free(payload_buf);                                                       \
-      payload_buf = NULL;                                                      \
-      return;                                                                  \
+      return -1;                                                                  \
     }                                                                          \
   } while (0)
 
@@ -61,58 +66,32 @@ int prepare_and_publish_response(
   void* correlation_data = NULL;
   uint16_t correlation_data_len;
 
-  int rst = 0;
-
-  if (mosquitto_property_read_string(props, MQTT_PROP_RESPONSE_TOPIC, &response_topic, false)
-      == NULL)
-  {
-    LOG_ERROR("Message does not have a response topic property");
-    return -1;
-  }
+  // read response topic (0x08)
+  RETURN_IF_FALSE((mosquitto_property_read_string(props, MQTT_PROP_RESPONSE_TOPIC, &response_topic, false)
+      != NULL));
   printf("   response_topic: %s\n", response_topic);
 
   // add content type (0x03)
-  rst = mosquitto_property_add_string(&response_props, MQTT_PROP_CONTENT_TYPE, COMMAND_CONTENT_TYPE);
-  if (rst != MOSQ_ERR_SUCCESS)
-  {
-    LOG_ERROR("Failure adding content type property: %s", mosquitto_strerror(rst));
-    return -1;
-  }
+  RETURN_IF_FALSE((mosquitto_property_add_string(&response_props, MQTT_PROP_CONTENT_TYPE, COMMAND_CONTENT_TYPE)
+      == MOSQ_ERR_SUCCESS));
 
-  if (mosquitto_property_read_binary(
+  // read correlation data (0x09)
+  RETURN_IF_FALSE((mosquitto_property_read_binary(
           props, MQTT_PROP_CORRELATION_DATA, &correlation_data, &correlation_data_len, false)
-      == NULL)
-  {
-    LOG_ERROR("Message does not have a correlation data property");
-    return -1;
-  }
+      != NULL));
 
   // add correlation data (0x09)
-  rst = mosquitto_property_add_binary(
-      &response_props, MQTT_PROP_CORRELATION_DATA, correlation_data, correlation_data_len);
-  if (rst != MOSQ_ERR_SUCCESS)
-  {
-    LOG_ERROR("Failure adding correlation data property: %s", mosquitto_strerror(rst));
-    return -1;
-  }
+  RETURN_IF_FALSE((mosquitto_property_add_binary(
+      &response_props, MQTT_PROP_CORRELATION_DATA, correlation_data, correlation_data_len) == MOSQ_ERR_SUCCESS));
 
   // add topic alias (0x23)
-  rst = mosquitto_property_add_int16(&response_props, MQTT_PROP_TOPIC_ALIAS, 1);
-  if (rst != MOSQ_ERR_SUCCESS)
-  {
-    LOG_ERROR("Failure adding topic alias property: %s", mosquitto_strerror(rst));
-    return -1;
-  }
+  RETURN_IF_FALSE((mosquitto_property_add_int16(&response_props, MQTT_PROP_TOPIC_ALIAS, 1) == MOSQ_ERR_SUCCESS));
 
   // add user properties (0x26) with key "Status" and value "200"
-  rst = mosquitto_property_add_string_pair(&response_props, 0x26, "Status", "200");
-  if (rst != MOSQ_ERR_SUCCESS)
-  {
-    LOG_ERROR("Failure adding user properties: %s", mosquitto_strerror(rst));
-    return -1;
-  }
+  RETURN_IF_FALSE((mosquitto_property_add_string_pair(&response_props, 0x26, "Status", "200") == MOSQ_ERR_SUCCESS));
 
-  rst = mosquitto_publish_v5(
+  // publish response
+  RETURN_IF_FALSE((mosquitto_publish_v5(
       mosq,
       NULL,
       response_topic,
@@ -120,26 +99,7 @@ int prepare_and_publish_response(
       proto_payload_buf,
       QOS_LEVEL,
       false,
-      response_props);
-  if (rst != MOSQ_ERR_SUCCESS)
-  {
-    LOG_ERROR("Failure publishing response: %s", mosquitto_strerror(rst));
-    return -1;
-  }
-
-  if (response_topic != NULL)
-  {
-    free(response_topic);
-    response_topic = NULL;
-  }
-
-  if (correlation_data != NULL)
-  {
-    free(correlation_data);
-    correlation_data = NULL;
-  }
-  mosquitto_property_free_all(&response_props);
-  response_props = NULL;
+      response_props) == MOSQ_ERR_SUCCESS));
   return 0;
 }
 
@@ -205,6 +165,53 @@ exit:
   return rst;
 }
 
+int process_destroy_wamr_runtime_request(
+  struct mosquitto* mosq,
+  const struct mosquitto_message* message,
+  const mosquitto_property* props)
+{
+  int req_rst = destroy_wamr_runtime();
+  DtmiProtobufTestTinykubePrototype1__DestroyWamrRuntimeCommandResponse
+    destroyWamrRuntimeCommandResponse = DTMI_PROTOBUF_TEST__TINYKUBE_PROTOTYPE__1__DESTROY_WAMR_RUNTIME_COMMAND_RESPONSE__INIT;  // Default value
+  destroyWamrRuntimeCommandResponse.has_result = 1;
+  destroyWamrRuntimeCommandResponse.result = req_rst ? -1 : 0;
+
+  // prepare protobuf payload for response
+  void* proto_payload_buf;
+  unsigned proto_payload_len;
+
+  proto_payload_len = dtmi_protobuf_test__tinykube_prototype__1__destroy_wamr_runtime_command_response__get_packed_size(&destroyWamrRuntimeCommandResponse);
+  proto_payload_buf = malloc(proto_payload_len);
+  if (proto_payload_buf == NULL)
+  {
+    LOG_ERROR("Failed to allocate memory for payload buffer.");
+    return -1;
+  }
+
+  int rst = 0;
+  size_t pack_size = dtmi_protobuf_test__tinykube_prototype__1__destroy_wamr_runtime_command_response__pack(&destroyWamrRuntimeCommandResponse, proto_payload_buf);
+  if (pack_size != proto_payload_len)
+  {
+    LOG_ERROR("Failure serializing payload.");
+    rst = -1;
+    goto exit;
+  }
+
+  // prepare and publish response with associated properties
+  rst = prepare_and_publish_response(mosq, proto_payload_buf, proto_payload_len, props);
+  if (rst != 0)
+  {
+    LOG_ERROR("Failure preparing response properties.");
+    goto exit;
+  }
+
+exit:
+  free(proto_payload_buf);
+  proto_payload_buf = NULL;
+  return rst;
+
+}
+
 // Custom callback for when a message is received.
 // Executes tinykube request and sends the response.
 void handle_message(
@@ -227,14 +234,12 @@ void handle_message(
             printf("Failed to create WAMR runtime.\n");
             return;
         }
-        printf("WAMR runtime is created successfully.\n");
     } else if (strcmp(topicName + 1, CMD_DESTROY_WAMR_RUNTIME) == 0) {
         printf("Destroying WAMR runtime.\n");
-        if (destroy_wamr_runtime() != 0) {
+        if (process_destroy_wamr_runtime_request(mosq, message, props) != 0) {
             printf("Failed to destroy WAMR runtime.\n");
             return;
         }
-        printf("WAMR runtime is destroyed successfully.\n");
     } else {
         printf("Unknown topicName %s.\n", topicName + 1);
         return;

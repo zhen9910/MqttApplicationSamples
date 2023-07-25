@@ -362,3 +362,6 @@ MigrationBackup/
 
 # Generated C protobuf files
 # *.pb-c.*
+
+# Webassembly files
+*.wasm

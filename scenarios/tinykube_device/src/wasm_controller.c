@@ -107,7 +107,17 @@ int add_wasm_module(char *wasm_module_name, int32_t *wasm_module_content, size_t
         printf("fopen failed.\n");
         return -1;
     }
-    size_t write_size = fwrite(wasm_module_content, 1, wasm_module_size, fp);
+
+    char *buffer = malloc(wasm_module_size);
+    if (buffer == NULL) {
+        printf("malloc failed.\n");
+        fclose(fp);
+        return -1;
+    }
+    for (size_t i = 0; i < wasm_module_size; i++) {
+        buffer[i] = wasm_module_content[i] & 0xff;
+    }
+    size_t write_size = fwrite(buffer, 1, wasm_module_size, fp);
     if (write_size != wasm_module_size) {
         printf("fwrite failed.\n");
         fclose(fp);

@@ -1,0 +1,6 @@
+{
+    "files.associations": {
+        "startwasmmodulecommandresponse.pb-c.h": "c",
+        "stopwasmmodulecommandrequest.pb-c.h": "c"
+    }
+}

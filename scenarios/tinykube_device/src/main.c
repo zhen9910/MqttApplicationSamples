@@ -19,17 +19,22 @@
 #include "AddWasmModuleCommandResponse.pb-c.h"
 #include "RemoveWasmModuleCommandRequest.pb-c.h"
 #include "RemoveWasmModuleCommandResponse.pb-c.h"
+#include "StartWasmModuleCommandRequest.pb-c.h"
+#include "StartWasmModuleCommandResponse.pb-c.h"
+#include "StopWasmModuleCommandRequest.pb-c.h"
+#include "StopWasmModuleCommandResponse.pb-c.h"
 
 #define ADDRESS     "tcp://broker.hivemq.com"
 #define CLIENTID    "f9e57487-616a-4725-aa9f-ee88b611228a"
 
-// #define TOPIC_CREATE_WAMR_RUNTIME_REQ "tinykube/+/command/createWamrRuntime"
 #define TOPIC_TINYKUBE_CMD_REQ "tinykube/+/command/+"
 
 #define CMD_CREATR_WAMR_RUNTIME   "createWamrRuntime"
 #define CMD_DESTROY_WAMR_RUNTIME  "destroyWamrRuntime"
 #define CMD_ADD_WASM_MODULE       "addWasmModule"
 #define CMD_REMOVE_WASM_MODULE    "removeWasmModule"
+#define CMD_START_WASM_MODULE     "startWasmModule"
+#define CMD_STOP_WASM_MODULE      "stopWasmModule"
 
 #define QOS_LEVEL 1
 #define MQTT_VERSION MQTT_PROTOCOL_V5
@@ -62,6 +67,8 @@ int create_wamr_runtime(uint32_t heap_size);
 int destroy_wamr_runtime();
 int add_wasm_module(char *wasm_module_name, int32_t *wasm_module_content, size_t wasm_module_size);
 int remove_wasm_module(char *wasm_module_name);
+int start_wasm_module(char *wasm_module_name);
+int stop_wasm_module(char *wasm_module_name);
 
 int prepare_and_publish_response(
   struct mosquitto* mosq,
@@ -371,6 +378,140 @@ exit:
   return 0;
 }
 
+int process_start_wasm_module_request(
+  struct mosquitto* mosq,
+  const struct mosquitto_message* message,
+  const mosquitto_property* props)
+{
+  int result = 0;
+  // process the request
+  char *message_payload = (char *)message->payload;
+  DtmiProtobufTestTinykubePrototype1__StartWasmModuleCommandRequest
+    *startWasmModuleCommandRequest = 
+             dtmi_protobuf_test__tinykube_prototype__1__start_wasm_module_command_request__unpack(NULL, message->payloadlen, message_payload);
+  
+  if (startWasmModuleCommandRequest == NULL)
+  {
+      fprintf(stderr, "error unpacking protobuf\n");
+      result = -1;
+      goto pack_resp;
+  }
+
+  char *wasm_module_name = startWasmModuleCommandRequest->wasmmodulename;
+  printf("   StartWasmModule: wasmModuleName = %s\n", wasm_module_name);
+
+  result = start_wasm_module(wasm_module_name);
+  if (result != 0) {
+    fprintf(stderr, "StartWasmModule: Failed to start wasm module");
+    goto pack_resp;
+  }
+
+pack_resp:
+  // prepare protobuf payload for response
+  void* proto_payload_buf;
+  unsigned proto_payload_len;
+
+  DtmiProtobufTestTinykubePrototype1__StartWasmModuleCommandResponse
+    startWasmModuleCommandResponse = DTMI_PROTOBUF_TEST__TINYKUBE_PROTOTYPE__1__START_WASM_MODULE_COMMAND_RESPONSE__INIT;  // Default value
+  
+  proto_payload_len = dtmi_protobuf_test__tinykube_prototype__1__start_wasm_module_command_response__get_packed_size(&startWasmModuleCommandResponse);
+  proto_payload_buf = malloc(proto_payload_len);
+  if (proto_payload_buf == NULL)
+  {
+    LOG_ERROR("Failed to allocate memory for payload buffer.");
+    return -1;
+  }
+
+  int rst = 0;
+  size_t pack_size = dtmi_protobuf_test__tinykube_prototype__1__start_wasm_module_command_response__pack(&startWasmModuleCommandResponse, proto_payload_buf);
+  if (pack_size != proto_payload_len)
+  {
+    LOG_ERROR("Failure serializing payload.");
+    rst = -1;
+    goto exit;
+  }
+
+  // prepare and publish response with associated properties
+  rst = prepare_and_publish_response(mosq, proto_payload_buf, proto_payload_len, props);
+  if (rst != 0)
+  {
+    LOG_ERROR("Failure preparing response properties.");
+    goto exit;
+  }
+
+exit:
+  free(proto_payload_buf);
+  proto_payload_buf = NULL;
+  return 0;
+}
+
+int process_stop_wasm_module_request(
+  struct mosquitto* mosq,
+  const struct mosquitto_message* message,
+  const mosquitto_property* props)
+{
+  int result = 0;
+  // process the request
+  char *message_payload = (char *)message->payload;
+  DtmiProtobufTestTinykubePrototype1__StopWasmModuleCommandRequest
+    *stopWasmModuleCommandRequest = 
+      dtmi_protobuf_test__tinykube_prototype__1__stop_wasm_module_command_request__unpack(NULL, message->payloadlen, message_payload);
+  
+  if (stopWasmModuleCommandRequest == NULL)
+  {
+      fprintf(stderr, "error unpacking protobuf\n");
+      result = -1;
+      goto pack_resp;
+  }
+
+  char *wasm_module_name = stopWasmModuleCommandRequest->wasmmodulename;
+  printf("   StopWasmModule: wasmModuleName = %s\n", wasm_module_name);
+
+  result = stop_wasm_module(wasm_module_name);
+  if (result != 0) {
+    fprintf(stderr, "StopWasmModule: Failed to stop wasm module");
+    goto pack_resp;
+  }
+
+pack_resp:
+  // prepare protobuf payload for response
+  void* proto_payload_buf;
+  unsigned proto_payload_len;
+
+  DtmiProtobufTestTinykubePrototype1__StopWasmModuleCommandResponse
+    stopWasmModuleCommandResponse = DTMI_PROTOBUF_TEST__TINYKUBE_PROTOTYPE__1__STOP_WASM_MODULE_COMMAND_RESPONSE__INIT;  // Default value
+  
+  proto_payload_len = dtmi_protobuf_test__tinykube_prototype__1__stop_wasm_module_command_response__get_packed_size(&stopWasmModuleCommandResponse);
+  proto_payload_buf = malloc(proto_payload_len);
+  if (proto_payload_buf == NULL)
+  {
+    LOG_ERROR("Failed to allocate memory for payload buffer.");
+    return -1;
+  }
+
+  int rst = 0;
+  size_t pack_size = dtmi_protobuf_test__tinykube_prototype__1__stop_wasm_module_command_response__pack(&stopWasmModuleCommandResponse, proto_payload_buf);
+  if (pack_size != proto_payload_len)
+  {
+    LOG_ERROR("Failure serializing payload.");
+    rst = -1;
+    goto exit;
+  }
+  
+  // prepare and publish response with associated properties
+  rst = prepare_and_publish_response(mosq, proto_payload_buf, proto_payload_len, props);
+  if (rst != 0)
+  {
+    LOG_ERROR("Failure preparing response properties.");
+    goto exit;
+  }
+
+exit:
+  free(proto_payload_buf);
+  proto_payload_buf = NULL;
+  return 0;
+}
+
 // Custom callback for when a message is received.
 // Executes tinykube request and sends the response.
 void handle_message(
@@ -392,29 +533,34 @@ void handle_message(
         printf("Creating WAMR runtime.\n");
         if (process_create_wamr_runtime_request(mosq, message, props) != 0) {
             printf("Failed to create WAMR runtime.\n");
-            return;
         }
     } else if (strcmp(topicName + 1, CMD_DESTROY_WAMR_RUNTIME) == 0) {
         printf("Destroying WAMR runtime.\n");
         if (process_destroy_wamr_runtime_request(mosq, message, props) != 0) {
             printf("Failed to destroy WAMR runtime.\n");
-            return;
         }
     } else if (strcmp(topicName + 1, CMD_ADD_WASM_MODULE) == 0) {
         printf("Adding WASM module.\n");
         if (process_add_wasm_module_request(mosq, message, props) != 0) {
             printf("Failed to add WASM module.\n");
-            return;
         }
     } else if (strcmp(topicName + 1, CMD_REMOVE_WASM_MODULE) == 0) {
         printf("Removing WASM module.\n");
         if (process_remove_wasm_module_request(mosq, message, props) != 0) {
             printf("Failed to remove WASM module.\n");
-            return;
+        }
+    } else if (strcmp(topicName + 1, CMD_START_WASM_MODULE) == 0) {
+        printf("Starting WASM module.\n");
+        if (process_start_wasm_module_request(mosq, message, props) != 0) {
+            printf("Failed to start WASM module.\n");
+        }
+    } else if (strcmp(topicName + 1, CMD_STOP_WASM_MODULE) == 0) {
+        printf("Stopping WASM module.\n");
+        if (process_stop_wasm_module_request(mosq, message, props) != 0) {
+            printf("Failed to stop WASM module.\n");
         }
     } else {
         printf("Unknown topicName %s.\n", topicName + 1);
-        return;
     }
 
 }

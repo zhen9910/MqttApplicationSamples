@@ -83,6 +83,12 @@ add_executable (tinykube_device
   ${CMAKE_CURRENT_LIST_DIR}/protobuf/CreateWamrRuntimeCommandRequest.pb-c.c
   ${CMAKE_CURRENT_LIST_DIR}/protobuf/CreateWamrRuntimeCommandResponse.pb-c.c
   ${CMAKE_CURRENT_LIST_DIR}/protobuf/DestroyWamrRuntimeCommandResponse.pb-c.c
+  ${CMAKE_CURRENT_LIST_DIR}/protobuf/Object_AddWasmModule_Request.pb-c.c
+  ${CMAKE_CURRENT_LIST_DIR}/protobuf/Array_AddWasmModule_Request_WasmModuleContent.pb-c.c
+  ${CMAKE_CURRENT_LIST_DIR}/protobuf/AddWasmModuleCommandRequest.pb-c.c
+  ${CMAKE_CURRENT_LIST_DIR}/protobuf/AddWasmModuleCommandResponse.pb-c.c
+  ${CMAKE_CURRENT_LIST_DIR}/protobuf/RemoveWasmModuleCommandRequest.pb-c.c
+  ${CMAKE_CURRENT_LIST_DIR}/protobuf/RemoveWasmModuleCommandResponse.pb-c.c
 
   # ${CMAKE_CURRENT_LIST_DIR}/protobuf/StartWasmModuleCommandRequest.pb-c.c
   # ${CMAKE_CURRENT_LIST_DIR}/protobuf/StartWasmModuleCommandResponse.pb-c.c

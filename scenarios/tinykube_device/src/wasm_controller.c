@@ -3,8 +3,13 @@
  * SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
  */
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include "wasm_export.h"
 #include "bh_read_file.h"
+
+#define WASM_MODULES_PATH "./wasm-module"
 
 enum WAMR_RUNTIME_STATUS {
     WAMR_RUNTIME_NOT_CREATED = 0,
@@ -67,6 +72,34 @@ int destroy_wamr_runtime()
     wamr_runtime_instance.heap_size = 0;
     wamr_runtime_instance.status = WAMR_RUNTIME_NOT_CREATED;
     printf("\n\n------ Destroyed wamr runtime -------.\n\n");
+    return 0;
+}
+
+int add_wasm_module(char *wasm_module_name, int32_t *wasm_module_content, size_t wasm_module_size)
+{
+    //file name  = WASM_MODULES_PATH + "/" + wasm_module_name
+    char full_file_name[256];
+    int result = snprintf(full_file_name, sizeof(full_file_name), "%s/%s", WASM_MODULES_PATH, wasm_module_name);
+    if (result < 0 || (size_t)result >= sizeof(full_file_name)) {
+        printf("snprintf failed.\n");
+        return -1;
+    }
+    printf("full_file_name = %s\n", full_file_name);
+    // write wasm_module_content to full_file_name as binary file
+    FILE *fp = fopen(full_file_name, "wb");
+    if (fp == NULL) {
+        printf("fopen failed.\n");
+        return -1;
+    }
+    size_t write_size = fwrite(wasm_module_content, 1, wasm_module_size, fp);
+    if (write_size != wasm_module_size) {
+        printf("fwrite failed.\n");
+        fclose(fp);
+        return -1;
+    }
+    fclose(fp);
+    printf("write wasm module to file %s successfully.\n", full_file_name);
+
     return 0;
 }
 

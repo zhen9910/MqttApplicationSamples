@@ -103,6 +103,27 @@ int add_wasm_module(char *wasm_module_name, int32_t *wasm_module_content, size_t
     return 0;
 }
 
+int remove_wasm_module(char *wasm_module_name)
+{
+    //file name  = WASM_MODULES_PATH + "/" + wasm_module_name
+    char full_file_name[256];
+    int result = snprintf(full_file_name, sizeof(full_file_name), "%s/%s", WASM_MODULES_PATH, wasm_module_name);
+    if (result < 0 || (size_t)result >= sizeof(full_file_name)) {
+        printf("snprintf failed.\n");
+        return -1;
+    }
+    printf("full_file_name = %s\n", full_file_name);
+    // remove full_file_name
+    int ret = remove(full_file_name);
+    if (ret != 0) {
+        printf("remove file %s failed.\n", full_file_name);
+        return -1;
+    }
+    printf("remove file %s successfully.\n", full_file_name);
+
+    return 0;
+}
+
 int
 run_wasm_module(const char *wasm_path)
 {

@@ -61,6 +61,7 @@
 int create_wamr_runtime(uint32_t heap_size);
 int destroy_wamr_runtime();
 int add_wasm_module(char *wasm_module_name, int32_t *wasm_module_content, size_t wasm_module_size);
+int remove_wasm_module(char *wasm_module_name);
 
 int prepare_and_publish_response(
   struct mosquitto* mosq,
@@ -308,7 +309,7 @@ int process_remove_wasm_module_request(
   const struct mosquitto_message* message,
   const mosquitto_property* props)
 {
-  // int result = 0;
+  int result = 0;
   // process the request
   char *message_payload = (char *)message->payload;
   DtmiProtobufTestTinykubePrototype1__RemoveWasmModuleCommandRequest
@@ -318,14 +319,55 @@ int process_remove_wasm_module_request(
   if (removeWasmModuleCommandRequest == NULL)
   {
       fprintf(stderr, "error unpacking protobuf\n");
-      // result = -1;
+      result = -1;
       goto pack_resp;
   }
 
   char *wasm_module_name = removeWasmModuleCommandRequest->wasmmodulename;
   printf("   RemoveWasmModule: wasmModuleName = %s\n", wasm_module_name);
 
+  result = remove_wasm_module(wasm_module_name);
+  if (result != 0) {
+    fprintf(stderr, "RemoveWasmModule: Failed to remove wasm module");
+    goto pack_resp;
+  }
+
 pack_resp:
+  // prepare protobuf payload for response
+  void* proto_payload_buf;
+  unsigned proto_payload_len;
+
+  DtmiProtobufTestTinykubePrototype1__RemoveWasmModuleCommandResponse
+    removeWasmModuleCommandResponse = DTMI_PROTOBUF_TEST__TINYKUBE_PROTOTYPE__1__REMOVE_WASM_MODULE_COMMAND_RESPONSE__INIT;  // Default value
+
+  proto_payload_len = dtmi_protobuf_test__tinykube_prototype__1__remove_wasm_module_command_response__get_packed_size(&removeWasmModuleCommandResponse);
+  proto_payload_buf = malloc(proto_payload_len);
+  if (proto_payload_buf == NULL)
+  {
+    LOG_ERROR("Failed to allocate memory for payload buffer.");
+    return -1;
+  }
+
+  int rst = 0;
+  size_t pack_size = dtmi_protobuf_test__tinykube_prototype__1__remove_wasm_module_command_response__pack(&removeWasmModuleCommandResponse, proto_payload_buf);
+  if (pack_size != proto_payload_len)
+  {
+    LOG_ERROR("Failure serializing payload.");
+    rst = -1;
+    goto exit;
+  }
+
+  // prepare and publish response with associated properties
+  rst = prepare_and_publish_response(mosq, proto_payload_buf, proto_payload_len, props);
+  if (rst != 0)
+  {
+    LOG_ERROR("Failure preparing response properties.");
+    goto exit;
+  }
+
+exit:
+  free(proto_payload_buf);
+  proto_payload_buf = NULL;
   return 0;
 }
 

@@ -50,7 +50,10 @@ int destroy_wamr_runtime()
         return -1;
     }
     wasm_runtime_destroy();
-    free(wamr_runtime_instance.heap_buf);
+    if (wamr_runtime_instance.heap_buf)
+    {
+        free(wamr_runtime_instance.heap_buf);
+    }
     wamr_runtime_instance.heap_buf = NULL;
     wamr_runtime_instance.heap_size = 0;
     wamr_runtime_instance.status = WAMR_RUNTIME_NOT_CREATED;
@@ -182,6 +185,7 @@ void wasm_runtime_executor(void *thread_args) {
     }
 
     printf("Thread stopped: wasm_runtime_executor()\n");
+    return;
 }
 
 void wasm_runtime_stop_module(void *thread_args)
@@ -189,23 +193,22 @@ void wasm_runtime_stop_module(void *thread_args)
     char *module_name = (char *)thread_args;
     printf("[%s]: module_name = %s\n", __func__, module_name);
 
-    if (wasm_module_instance[0].status == WASM_MODULE_STOPPED)
-    {
-        printf("[%s]: module is already stopped.\n", __func__);
-        return;
-    }
+    // if (wasm_module_instance[0].status == WASM_MODULE_STOPPED)
+    // {
+    //     printf("[%s]: module is already stopped.\n", __func__);
+    //     return;
+    // }
 
-    if (wasm_module_instance[0].exec_env)
-        wasm_runtime_destroy_exec_env(wasm_module_instance[0].exec_env);
-    if (wasm_module_instance[0].module_inst)
-        wasm_runtime_deinstantiate(wasm_module_instance[0].module_inst);
-    if (wasm_module_instance[0].module)
-        wasm_runtime_unload(wasm_module_instance[0].module);
-    if (wasm_module_instance[0].buffer)
-        BH_FREE(wasm_module_instance[0].buffer);
+    // if (wasm_module_instance[0].exec_env)
+    //     wasm_runtime_destroy_exec_env(wasm_module_instance[0].exec_env);
+    // if (wasm_module_instance[0].module_inst)
+    //     wasm_runtime_deinstantiate(wasm_module_instance[0].module_inst);
+    // if (wasm_module_instance[0].module)
+    //     wasm_runtime_unload(wasm_module_instance[0].module);
+    // if (wasm_module_instance[0].buffer)
+    //     BH_FREE(wasm_module_instance[0].buffer);
 
-    // wasm_runtime_destroy();
-    destroy_wamr_runtime();
+    // destroy_wamr_runtime();
     wasm_module_instance[0].status = WASM_MODULE_STOPPED;
     wasm_module_instance[0].module_name = NULL;
     wasm_module_instance[0].module = NULL;
@@ -213,6 +216,14 @@ void wasm_runtime_stop_module(void *thread_args)
     wasm_module_instance[0].exec_env = NULL;
     wasm_module_instance[0].buffer = NULL;
 
-    printf("[%s]: unloaded module_name = %s\n", __func__, module_name);
+    if (wamr_runtime_instance.heap_buf)
+    {
+        free(wamr_runtime_instance.heap_buf);
+    }
+    wamr_runtime_instance.heap_buf = NULL;
+    wamr_runtime_instance.heap_size = 0;
+    wamr_runtime_instance.status = WAMR_RUNTIME_NOT_CREATED;
 
+    printf("[%s]: unloaded module_name = %s\n", __func__, module_name);
+    return;
 }

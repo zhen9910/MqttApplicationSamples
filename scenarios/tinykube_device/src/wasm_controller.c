@@ -230,20 +230,19 @@ void *libHandle = NULL;
 ExecutorHandler execFunc = NULL;
 StopModuleHandler stopFunc = NULL;
 
-int __stop_wasm_module_v2(char *wasm_module_name)
+int stop_wasm_module_v2(char *wasm_module_name)
 {
 
     if (thread_running) {
         printf("[%s]: sending cancelation request\n", __func__);
         pthread_cancel(thread_exec);
-        // pthread_join(thread_exec, NULL); // Wait for the thread to terminate
+        // pthread_join(thread_exec, NULL);
+
         thread_running = 0;
         thread_exec = 0;
         printf("[%s]: thread_exec was canceled\n", __func__);
-        pthread_cancel(thread_start_wasm);
-        pthread_join(thread_start_wasm, NULL); // Wait for the thread to terminate
-        thread_start_wasm = 0;
-        printf("[%s]: thread_start_wasm was canceled\n", __func__);
+
+        (*stopFunc)((void *)wasm_module_name);
 
     } else {
         printf("[%s]: Thread is not running.\n", __func__);
@@ -252,33 +251,11 @@ int __stop_wasm_module_v2(char *wasm_module_name)
     return 0;
 }
 
-int stop_wasm_module_v2(char *wasm_module_name)
-{
-    int ret = 0;
-    printf("[%s]: wasm_module_name = %s\n", __func__, wasm_module_name);
-
-    pthread_t thread_stop = 0;
-    ret = pthread_create(&thread_stop, NULL, (void* (*)(void*))stopFunc, (void*)wasm_module_name);
-    if (ret != 0) {
-        perror("Error creating thread");
-        exit(EXIT_FAILURE);
-    }
-
-    ret = __stop_wasm_module_v2(wasm_module_name);
-    if (ret)
-    {
-        printf("[%s]: __stop_wasm_module() failed.\n", __func__);
-        return -1;
-    }
-
-    return 0;
-}
-
 struct wasm_runtime_thread_args args;
-void *__start_wasm_module_v2(void *thread_args)
+int start_wasm_module_v2(char *wasm_module_name)
 {
     int ret;
-    char *wasm_module_name = (char *)thread_args;
+    // char *wasm_module_name = (char *)thread_args;
     printf("[%s]: wasm_module_name = %s\n", __func__, wasm_module_name);
 
     args.module_name = wasm_module_name;
@@ -288,11 +265,7 @@ void *__start_wasm_module_v2(void *thread_args)
     if (thread_running) {
         printf("[%s]: Thread is already running.\n", __func__);
     } else {
-        // pthread_attr_t attr;
-        // pthread_attr_init(&attr);
-        // pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
-        // ret = pthread_create(&thread_exec, &attr, (void* (*)(void*))execFunc, (void*)&args);
-        ret = pthread_create(&thread_exec, NULL, (void* (*)(void*))execFunc, (void*)&args);
+        ret = pthread_create(&thread_exec, NULL, (void * (*)(void *))execFunc, (void*)&args);
         if (ret != 0) {
             perror("Error creating thread");
             dlclose(libHandle);
@@ -301,36 +274,6 @@ void *__start_wasm_module_v2(void *thread_args)
         thread_running = 1;
     }
 
-    // Wait for the thread to terminate
-    printf("[%s]: Waiting for thread to finish...\n", __func__);
-    pthread_join(thread_exec, NULL);
-    printf("[%s]: Thread stopped.\n", __func__);
-    thread_running = 0;
-    return (void *)0;
-}
-
-/*
-int start_wasm_module_v2(char *wasm_module_name)
-{
-    __start_wasm_module_v2((void *)wasm_module_name);
-    return 0;
-}
-*/
-
-int start_wasm_module_v2(char *wasm_module_name)
-{
-    if (thread_running) {
-        printf("Thread is already running.\n");
-        return 0;
-    }
-
-    int ret = pthread_create(&thread_start_wasm, NULL, __start_wasm_module_v2, (void*)wasm_module_name);
-    if (ret != 0) {
-        perror("Error creating thread");
-        exit(EXIT_FAILURE);
-    }
-    // pthread_join(thread_start_wasm, NULL); // Wait for the thread to terminate
-    printf("[%s]: Thread started.\n", __func__);
     return 0;
 }
 

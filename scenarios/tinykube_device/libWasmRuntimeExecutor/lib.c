@@ -162,19 +162,7 @@ int run_wasm_module(char *wasm_module_name)
 
 #endif
 void wasm_runtime_executor(void *thread_args) {
-    printf("Thread started: wasm_runtime_executor()\n");
-
-    // printf("%s(): about to enable cancelation\n", __func__);
-
-    // int s = pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
-    // if (s != 0)
-    //    handle_error_en(s, "pthread_setcancelstate");
-
-    // s = pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, NULL);
-    // if (s != 0)
-    //    handle_error_en(s, "pthread_setcanceltype");
-    
-    // printf("%s(): cancelation enabled\n", __func__);
+    printf("Thread started: wasm_runtime_executor(%p)\n", thread_args);
 
     struct wasm_runtime_thread_args *args = (struct wasm_runtime_thread_args *)thread_args;
     wasm_module_instance[0].status = WASM_MODULE_RUNNING;

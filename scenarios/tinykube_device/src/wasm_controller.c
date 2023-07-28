@@ -6,42 +6,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "wasm_export.h"
+#include <dlfcn.h> // For dlopen() and dlsym()
+
 #include "bh_read_file.h"
-
-#define WASM_MODULES_PATH "./wasm-module"
-
-enum WAMR_RUNTIME_STATUS {
-    WAMR_RUNTIME_NOT_CREATED = 0,
-    WAMR_RUNTIME_CREATED = 1,
-    // WAMR_RUNTIME_RUNNING = 2,
-    // WAMR_RUNTIME_STOPPED = 3,
-};
-
-struct wamr_runtime_info {
-    char *heap_buf;
-    uint32_t heap_size;
-    enum WAMR_RUNTIME_STATUS status;
-};
-
-enum WASM_MODULE_STATUS {
-    WASM_MODULE_EMPTY = 0,
-    WASM_MODULE_STOPPED = 1,
-    WASM_MODULE_RUNNING = 2,
-};
-
-struct wasm_module_info {
-    char *module_name;
-    enum WASM_MODULE_STATUS status;
-    wasm_module_t module;
-    wasm_module_inst_t module_inst;
-    wasm_exec_env_t exec_env;
-};
+#include "tinykube_device.h"
 
 static struct wamr_runtime_info wamr_runtime_instance;
-
-#define MAX_WASM_MODULE_NUM 1
 static struct wasm_module_info wasm_module_instance[MAX_WASM_MODULE_NUM];
+
+int open_runtime_lib();
 
 int create_wamr_runtime(uint32 heap_size)
 {
@@ -247,5 +220,153 @@ int stop_wasm_module(char *wasm_module_name)
     wasm_runtime_unload(wasm_module_instance[0].module);
 
     printf("stop_wasm_module().\n");
+    return 0;
+}
+
+pthread_t thread_exec;
+int thread_running = 0;
+void *libHandle = NULL;
+ExecutorHandler execFunc = NULL;
+StopModuleHandler stopFunc = NULL;
+
+int __stop_wasm_module_v2(char *wasm_module_name)
+{
+
+    if (thread_running) {
+        printf("[%s]: sending cancelation request\n", __func__);
+        int s = pthread_cancel(thread_exec);
+        if (s != 0)
+            handle_error_en(s, "pthread_cancel");
+        // pthread_join(thread_exec, NULL); // Wait for the thread to terminate
+        thread_running = 0;
+        printf("[%s]: thread was canceled\n", __func__);
+    } else {
+        printf("[%s]: Thread is not running.\n", __func__);
+        return -1;
+    }
+    return 0;
+}
+
+int stop_wasm_module_v2(char *wasm_module_name)
+{
+    int ret = 0;
+    printf("[%s]: wasm_module_name = %s\n", __func__, wasm_module_name);
+
+    pthread_t thread_stop = 0;
+    ret = pthread_create(&thread_stop, NULL, (void* (*)(void*))stopFunc, (void*)wasm_module_name);
+    if (ret != 0) {
+        perror("Error creating thread");
+        exit(EXIT_FAILURE);
+    }
+
+    ret = __stop_wasm_module_v2(wasm_module_name);
+    if (ret)
+    {
+        printf("[%s]: __stop_wasm_module() failed.\n", __func__);
+        return -1;
+    }
+
+    return 0;
+}
+
+void *__start_wasm_module_v2(void *thread_args)
+{
+    int ret;
+    char *wasm_module_name = (char *)thread_args;
+    printf("[%s]: wasm_module_name = %s\n", __func__, wasm_module_name);
+
+    struct wasm_runtime_thread_args args;
+    args.module_name = wasm_module_name;
+    args.heap_size = 512 * 1024;
+
+    // Call the function
+    if (thread_running) {
+        printf("[%s]: Thread is already running.\n", __func__);
+    } else {
+        ret = pthread_create(&thread_exec, NULL, (void* (*)(void*))execFunc, (void*)&args);
+        if (ret != 0) {
+            perror("Error creating thread");
+            dlclose(libHandle);
+            exit(EXIT_FAILURE);
+        }
+        thread_running = 1;
+    }
+
+    // Wait for the thread to terminate
+    printf("[%s]: Waiting for thread to finish...\n", __func__);
+    pthread_join(thread_exec, NULL);
+    printf("[%s]: Thread stopped.\n", __func__);
+    thread_running = 0;
+    return (void *)0;
+}
+
+int start_wasm_module_v2(char *wasm_module_name)
+{
+    if (thread_running) {
+        printf("Thread is already running.\n");
+        return 0;
+    }
+
+    printf("[%s]: about to enable cancelation\n", __func__);
+
+    int s = pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
+    if (s != 0)
+       handle_error_en(s, "pthread_setcancelstate");
+
+    s = pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, NULL);
+    if (s != 0)
+       handle_error_en(s, "pthread_setcanceltype");
+    
+    printf("[%s]: cancelation enabled\n", __func__);
+
+    // thread_running = 1;
+    pthread_t thread_wasm_start = 0;      
+    int ret = pthread_create(&thread_wasm_start, NULL, __start_wasm_module_v2, (void*)wasm_module_name);
+    // thread_running = 0;
+    if (ret != 0) {
+        perror("Error creating thread");
+        exit(EXIT_FAILURE);
+    }
+    // pthread_join(thread_wasm_start, NULL); // Wait for the thread to terminate
+    printf("[%s]: Thread started.\n", __func__);
+    return 0;
+}
+
+int open_runtime_lib()
+{
+    // Load the shared library
+    if (libHandle == NULL) {
+        libHandle = dlopen("./build/libWasmRuntimeExecutor.so", RTLD_NOW);
+        if (!libHandle) {
+            fprintf(stderr, "Error loading the shared library: %s\n", dlerror());
+            return -1;
+        }
+    }
+
+    // Obtain the function pointer to wasm_runtime_executor()
+    execFunc = (ExecutorHandler)dlsym(libHandle, "wasm_runtime_executor");
+    if (!execFunc) {
+        fprintf(stderr, "Error obtaining function pointer: %s\n", dlerror());
+        dlclose(libHandle);
+        return -1;
+    }
+
+    // Obtain the function pointer to stop_wasm_module()
+    stopFunc = (StopModuleHandler)dlsym(libHandle, "wasm_runtime_stop_module");
+    if (!stopFunc) {
+        fprintf(stderr, "Error obtaining function pointer: %s\n", dlerror());
+        dlclose(libHandle);
+        return -1;
+    }
+    return 0;
+}
+
+int close_runtime_lib()
+{
+    if (libHandle) {
+        dlclose(libHandle);
+        libHandle = NULL;
+        execFunc = NULL;
+    }
     return 0;
 }

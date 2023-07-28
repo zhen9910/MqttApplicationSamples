@@ -67,12 +67,29 @@ endif ()
 # build out vmlib
 set (WAMR_ROOT_DIR ${CMAKE_CURRENT_LIST_DIR}/../../wasm-micro-runtime)
 include (${WAMR_ROOT_DIR}/build-scripts/runtime_lib.cmake)
+# include (${SHARED_DIR}/utils/uncommon/shared_uncommon.cmake)
 
 add_library(vmlib ${WAMR_RUNTIME_LIB_SOURCE})
 
+################# libWasmRuntimeExecutor  ################
+include_directories(${CMAKE_CURRENT_LIST_DIR}, ${CMAKE_CURRENT_LIST_DIR}/inc)
+include (${SHARED_DIR}/utils/uncommon/shared_uncommon.cmake)
+set (WAMR_ROOT_DIR ${CMAKE_CURRENT_LIST_DIR}/../../wasm-micro-runtime)
+
+add_library(WasmRuntimeExecutor SHARED
+  ${CMAKE_CURRENT_LIST_DIR}/libWasmRuntimeExecutor/lib.c
+  # ${WAMR_RUNTIME_LIB_SOURCE}
+  ${UNCOMMON_SHARED_SOURCE}
+)
+
+set_target_properties(WasmRuntimeExecutor PROPERTIES
+    LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/build"
+)
+target_link_libraries(WasmRuntimeExecutor vmlib -lm -ldl -lpthread -lrt)
+
 ################  application related  ################
 # tinykube_device
-include_directories(${CMAKE_CURRENT_LIST_DIR})
+include_directories(${CMAKE_CURRENT_LIST_DIR}, ${CMAKE_CURRENT_LIST_DIR}/inc)
 include (${SHARED_DIR}/utils/uncommon/shared_uncommon.cmake)
 
 add_executable (tinykube_device
@@ -95,13 +112,6 @@ add_executable (tinykube_device
   ${CMAKE_CURRENT_LIST_DIR}/protobuf/StopWasmModuleCommandResponse.pb-c.c
 )
 
-# cmake_policy(SET CMP0083 OLD)
 # check_pie_supported()
-# set_target_properties (tinykube_embedded_client PROPERTIES POSITION_INDEPENDENT_CODE ON)
-
-# link_libraries(
-#     uuid
-#     protobuf-c
-# )
 
 target_link_libraries (tinykube_device vmlib uuid protobuf-c -lm -ldl -lpthread -lrt)

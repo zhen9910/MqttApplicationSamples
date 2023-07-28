@@ -90,7 +90,8 @@
             "displayName": "tinykube device",
             "configurePreset": "tinykube_device",
             "targets": [
-                "tinykube_device"
+                "tinykube_device",
+                "libWasmRuntimeExecutor.so"
             ]
         }
     ],

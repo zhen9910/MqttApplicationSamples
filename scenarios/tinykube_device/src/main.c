@@ -11,6 +11,7 @@
 #include "mqtt_callbacks.h"
 #include "mqtt_protocol.h"
 #include "mqtt_setup.h"
+#include "tinykube_device.h"
 
 #include "CreateWamrRuntimeCommandRequest.pb-c.h"
 #include "CreateWamrRuntimeCommandResponse.pb-c.h"
@@ -62,13 +63,6 @@
       return -1;                                                                  \
     }                                                                          \
   } while (0)
-
-int create_wamr_runtime(uint32_t heap_size);
-int destroy_wamr_runtime();
-int add_wasm_module(char *wasm_module_name, int32_t *wasm_module_content, size_t wasm_module_size);
-int remove_wasm_module(char *wasm_module_name);
-int start_wasm_module(char *wasm_module_name);
-int stop_wasm_module(char *wasm_module_name);
 
 int prepare_and_publish_response(
   struct mosquitto* mosq,
@@ -400,7 +394,7 @@ int process_start_wasm_module_request(
   char *wasm_module_name = startWasmModuleCommandRequest->wasmmodulename;
   printf("   StartWasmModule: wasmModuleName = %s\n", wasm_module_name);
 
-  result = start_wasm_module(wasm_module_name);
+  result = start_wasm_module_v2(wasm_module_name);
   if (result != 0) {
     fprintf(stderr, "StartWasmModule: Failed to start wasm module");
     goto pack_resp;
@@ -467,9 +461,9 @@ int process_stop_wasm_module_request(
   char *wasm_module_name = stopWasmModuleCommandRequest->wasmmodulename;
   printf("   StopWasmModule: wasmModuleName = %s\n", wasm_module_name);
 
-  result = stop_wasm_module(wasm_module_name);
+  result = stop_wasm_module_v2(wasm_module_name);
   if (result != 0) {
-    fprintf(stderr, "StopWasmModule: Failed to stop wasm module");
+    fprintf(stderr, "StopWasmModule: Failed to stop wasm module\n");
     goto pack_resp;
   }
 
@@ -625,6 +619,7 @@ int main(int argc, char* argv[])
   }
   else
   {
+    open_runtime_lib();
     while (keep_running)
     {
     }

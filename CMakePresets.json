@@ -91,7 +91,7 @@
             "configurePreset": "tinykube_device",
             "targets": [
                 "tinykube_device",
-                "libWasmRuntimeExecutor.so"
+                "libRuntimeController.so"
             ]
         }
     ],

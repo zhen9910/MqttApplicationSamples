@@ -46,8 +46,8 @@ struct wasm_runtime_thread_args {
 #define handle_error_en(en, msg) \
                do { errno = en; perror(msg); exit(EXIT_FAILURE); } while (0)
 
-typedef void (*ExecutorHandler)(void *);
-typedef void (*StopModuleHandler)(void *);
+typedef void* (*ExecutorHandler)(void *);
+typedef void* (*ResetStatusHandler)(void *);
 
 int create_wamr_runtime(uint32_t heap_size);
 int destroy_wamr_runtime();

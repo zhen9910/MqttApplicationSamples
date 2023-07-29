@@ -228,7 +228,7 @@ pthread_t thread_exec = 0;
 int thread_running = 0;
 void *libHandle = NULL;
 ExecutorHandler execFunc = NULL;
-StopModuleHandler stopFunc = NULL;
+ResetStatusHandler resetStatusFunc = NULL;
 
 int stop_wasm_module_v2(char *wasm_module_name)
 {
@@ -242,7 +242,7 @@ int stop_wasm_module_v2(char *wasm_module_name)
         thread_exec = 0;
         printf("[%s]: thread_exec was canceled\n", __func__);
 
-        (*stopFunc)((void *)wasm_module_name);
+        (*resetStatusFunc)((void *)wasm_module_name);
 
     } else {
         printf("[%s]: Thread is not running.\n", __func__);
@@ -255,7 +255,6 @@ struct wasm_runtime_thread_args args;
 int start_wasm_module_v2(char *wasm_module_name)
 {
     int ret;
-    // char *wasm_module_name = (char *)thread_args;
     printf("[%s]: wasm_module_name = %s\n", __func__, wasm_module_name);
 
     args.module_name = wasm_module_name;
@@ -265,7 +264,7 @@ int start_wasm_module_v2(char *wasm_module_name)
     if (thread_running) {
         printf("[%s]: Thread is already running.\n", __func__);
     } else {
-        ret = pthread_create(&thread_exec, NULL, (void * (*)(void *))execFunc, (void*)&args);
+        ret = pthread_create(&thread_exec, NULL, (void* (*)(void*))execFunc, (void*)&args);
         if (ret != 0) {
             perror("Error creating thread");
             dlclose(libHandle);
@@ -281,24 +280,24 @@ int open_runtime_lib()
 {
     // Load the shared library
     if (libHandle == NULL) {
-        libHandle = dlopen("./build/libWasmRuntimeExecutor.so", RTLD_NOW);
+        libHandle = dlopen("./build/libRuntimeController.so", RTLD_NOW);
         if (!libHandle) {
             fprintf(stderr, "Error loading the shared library: %s\n", dlerror());
             return -1;
         }
     }
 
-    // Obtain the function pointer to wasm_runtime_executor()
-    execFunc = (ExecutorHandler)dlsym(libHandle, "wasm_runtime_executor");
+    // Obtain the function pointer to runtime_controller_start_wasm_app()
+    execFunc = (ExecutorHandler)dlsym(libHandle, "runtime_controller_start_wasm_app");
     if (!execFunc) {
         fprintf(stderr, "Error obtaining function pointer: %s\n", dlerror());
         dlclose(libHandle);
         return -1;
     }
 
-    // Obtain the function pointer to stop_wasm_module()
-    stopFunc = (StopModuleHandler)dlsym(libHandle, "wasm_runtime_stop_module");
-    if (!stopFunc) {
+    // Obtain the function pointer to runtime_controller_reset_status()
+    resetStatusFunc = (ResetStatusHandler)dlsym(libHandle, "runtime_controller_reset_status");
+    if (!resetStatusFunc) {
         fprintf(stderr, "Error obtaining function pointer: %s\n", dlerror());
         dlclose(libHandle);
         return -1;

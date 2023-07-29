@@ -71,21 +71,21 @@ include (${WAMR_ROOT_DIR}/build-scripts/runtime_lib.cmake)
 
 add_library(vmlib ${WAMR_RUNTIME_LIB_SOURCE})
 
-################# libWasmRuntimeExecutor  ################
+################# libRuntimeController  ################
 include_directories(${CMAKE_CURRENT_LIST_DIR}, ${CMAKE_CURRENT_LIST_DIR}/inc)
 include (${SHARED_DIR}/utils/uncommon/shared_uncommon.cmake)
 set (WAMR_ROOT_DIR ${CMAKE_CURRENT_LIST_DIR}/../../wasm-micro-runtime)
 
-add_library(WasmRuntimeExecutor SHARED
-  ${CMAKE_CURRENT_LIST_DIR}/libWasmRuntimeExecutor/lib.c
+add_library(RuntimeController SHARED
+  ${CMAKE_CURRENT_LIST_DIR}/libRuntimeController/lib.c
   # ${WAMR_RUNTIME_LIB_SOURCE}
   ${UNCOMMON_SHARED_SOURCE}
 )
 
-set_target_properties(WasmRuntimeExecutor PROPERTIES
+set_target_properties(RuntimeController PROPERTIES
     LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/build"
 )
-target_link_libraries(WasmRuntimeExecutor vmlib -lm -ldl -lpthread -lrt)
+target_link_libraries(RuntimeController vmlib -lm -ldl -lpthread -lrt)
 
 ################  application related  ################
 # tinykube_device
@@ -95,7 +95,7 @@ include (${SHARED_DIR}/utils/uncommon/shared_uncommon.cmake)
 add_executable (tinykube_device
   ${MOSQUITTO_CLIENT_EXTENSIONS}
   ${CMAKE_CURRENT_LIST_DIR}/src/main.c
-  ${CMAKE_CURRENT_LIST_DIR}/src/wasm_controller.c
+  ${CMAKE_CURRENT_LIST_DIR}/src/wasm_handler.c
   ${UNCOMMON_SHARED_SOURCE}
   ${CMAKE_CURRENT_LIST_DIR}/protobuf/CreateWamrRuntimeCommandRequest.pb-c.c
   ${CMAKE_CURRENT_LIST_DIR}/protobuf/CreateWamrRuntimeCommandResponse.pb-c.c

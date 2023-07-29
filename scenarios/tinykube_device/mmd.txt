@@ -1,0 +1,47 @@
+This is a backup of mermaid codes to generate diagram.
+
+sequenceDiagram;
+  participant B as AEW Controller
+  participant A as Tinykube device main app
+
+  B->>A: Start_Wasm_Module_Request
+  create participant foo as wasm runtime thread
+  box Tinykube Enabled Device
+  participant A
+  participant foo
+  end
+
+  A-->>+foo: Create Thread
+  A->>B: Start_Wasm_Module_Response
+  Note over foo: child thread to create wasm runtime and execute wasm module
+  foo-->>foo: create_runtime_env
+  foo-->>foo: execute_wasm_module
+  B->>A: Check_Wasm_Status_Request
+  A->>B: Check_Wasm_Status_Response
+  foo-->>-foo: destroy_runtime_env
+  destroy foo
+  foo-->>A: Completed
+
+sequenceDiagram;
+  participant B as AEW Controller
+  participant A as Tinykube device main app
+
+  B->>A: Start_Wasm_Module_Request
+  create participant foo as wasm runtime thread
+  box Tinykube Enabled Device
+  participant A
+  participant foo
+  end
+
+  A-->>+foo: Create Thread
+  A->>B: Start_Wasm_Module_Response
+  Note over foo: child thread to create wasm runtime and execute wasm module
+  foo-->>foo: create_runtime_env
+  foo-->>foo: execute_wasm_module
+  B->>A: Stop_Wasm_Module_Request
+  A-->>foo: Cancel Thread
+  destroy foo
+  foo-->>A: exited
+  A-->>A: reset Wasm status
+  A->>B: Stop_Wasm_Module_Response
+  

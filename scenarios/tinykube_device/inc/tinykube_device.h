@@ -48,6 +48,7 @@ struct wasm_runtime_thread_args {
 
 typedef void* (*ExecutorHandler)(void *);
 typedef void* (*ResetStatusHandler)(void *);
+typedef void* (*GetModuleStatusHandler)(void *, void *);
 
 int create_wamr_runtime(uint32_t heap_size);
 int destroy_wamr_runtime();

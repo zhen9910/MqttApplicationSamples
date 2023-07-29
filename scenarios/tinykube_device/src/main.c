@@ -395,20 +395,26 @@ int process_start_wasm_module_request(
   char *wasm_module_name = startWasmModuleCommandRequest->wasmmodulename;
   printf("   StartWasmModule: wasmModuleName = %s\n", wasm_module_name);
 
-  while (1)
-  {
-    result = start_wasm_module_v2(wasm_module_name);
-    if (result != 0) {
-      fprintf(stderr, "StartWasmModule: Failed to start wasm module");
-      goto pack_resp;
-    }
-    sleep(5);
-    result = stop_wasm_module_v2(wasm_module_name);
-    if (result != 0) {
-      fprintf(stderr, "StartWasmModule: Failed to stop wasm module");
-      goto pack_resp;
-    }
+  result = start_wasm_module_v2(wasm_module_name);
+  if (result != 0) {
+    fprintf(stderr, "StartWasmModule: Failed to start wasm module");
+    goto pack_resp;
   }
+
+  // while (1)
+  // {
+  //   result = start_wasm_module_v2(wasm_module_name);
+  //   if (result != 0) {
+  //     fprintf(stderr, "StartWasmModule: Failed to start wasm module");
+  //     goto pack_resp;
+  //   }
+  //   sleep(5);
+  //   result = stop_wasm_module_v2(wasm_module_name);
+  //   if (result != 0) {
+  //     fprintf(stderr, "StartWasmModule: Failed to stop wasm module");
+  //     goto pack_resp;
+  //   }
+  // }
 
 pack_resp:
   // prepare protobuf payload for response

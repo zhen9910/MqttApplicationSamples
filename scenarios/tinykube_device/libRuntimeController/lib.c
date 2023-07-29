@@ -209,3 +209,11 @@ void runtime_controller_reset_status(char *module_name)
     wamr_runtime_info_reset(&wamr_runtime_instance);
     return;
 }
+
+void runtime_controller_get_status(struct wasm_module_info *module_instance, struct wamr_runtime_info *runtime_instance)
+{
+    module_instance->status = wasm_module_instance[0].status;
+    module_instance->module_name = wasm_module_instance[0].module_name;
+    runtime_instance->status = wamr_runtime_instance.status;
+    runtime_instance->heap_size = wamr_runtime_instance.heap_size;
+}

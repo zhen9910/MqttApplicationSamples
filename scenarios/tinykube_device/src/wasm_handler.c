@@ -223,22 +223,29 @@ int stop_wasm_module(char *wasm_module_name)
     return 0;
 }
 
-pthread_t thread_start_wasm = 0;
+// pthread_t thread_start_wasm = 0;
 pthread_t thread_exec = 0;
-int thread_running = 0;
+// int thread_running = 0;
 void *libHandle = NULL;
 ExecutorHandler execFunc = NULL;
 ResetStatusHandler resetStatusFunc = NULL;
+GetModuleStatusHandler getWasmStatusFunc = NULL;
 
 int stop_wasm_module_v2(char *wasm_module_name)
 {
+    struct wasm_module_info module_info = {0};
+    struct wamr_runtime_info runtime_info = {0};
+    (*getWasmStatusFunc)(&module_info, &runtime_info);
+    printf("[%s]: module_info.module_name = %s\n", __func__, module_info.module_name);
+    printf("[%s]: module_info.status = %d\n", __func__, module_info.status);
+    printf("[%s]: runtime_info.status = %d\n", __func__, runtime_info.status);
 
-    if (thread_running) {
+    if (runtime_info.status == WAMR_RUNTIME_CREATED)
+    {
         printf("[%s]: sending cancelation request\n", __func__);
         pthread_cancel(thread_exec);
         // pthread_join(thread_exec, NULL);
-
-        thread_running = 0;
+        // thread_running = 0;
         thread_exec = 0;
         printf("[%s]: thread_exec was canceled\n", __func__);
 
@@ -259,9 +266,15 @@ int start_wasm_module_v2(char *wasm_module_name)
 
     args.module_name = wasm_module_name;
     args.heap_size = 512 * 1024;
+    struct wasm_module_info module_info = {0};
+    struct wamr_runtime_info runtime_info = {0};
+    (*getWasmStatusFunc)(&module_info, &runtime_info);
+    printf("[%s]: module_info.module_name = %s\n", __func__, module_info.module_name);
+    printf("[%s]: module_info.status = %d\n", __func__, module_info.status);
+    printf("[%s]: runtime_info.status = %d\n", __func__, runtime_info.status);
 
     // Call the function
-    if (thread_running) {
+    if (runtime_info.status == WAMR_RUNTIME_CREATED) {
         printf("[%s]: Thread is already running.\n", __func__);
     } else {
         ret = pthread_create(&thread_exec, NULL, (void* (*)(void*))execFunc, (void*)&args);
@@ -270,7 +283,7 @@ int start_wasm_module_v2(char *wasm_module_name)
             dlclose(libHandle);
             exit(EXIT_FAILURE);
         }
-        thread_running = 1;
+        // thread_running = 1;
     }
 
     return 0;
@@ -298,6 +311,13 @@ int open_runtime_lib()
     // Obtain the function pointer to runtime_controller_reset_status()
     resetStatusFunc = (ResetStatusHandler)dlsym(libHandle, "runtime_controller_reset_status");
     if (!resetStatusFunc) {
+        fprintf(stderr, "Error obtaining function pointer: %s\n", dlerror());
+        dlclose(libHandle);
+        return -1;
+    }
+
+    getWasmStatusFunc = (GetModuleStatusHandler)dlsym(libHandle, "runtime_controller_get_status");
+    if (!getWasmStatusFunc) {
         fprintf(stderr, "Error obtaining function pointer: %s\n", dlerror());
         dlclose(libHandle);
         return -1;

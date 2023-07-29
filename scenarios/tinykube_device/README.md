@@ -9,11 +9,3 @@ Then, to generate the files, run:
 # from the root folder
 protoc-c --c_out=./scenarios/tinykube_device/protobuf --proto_path=./scenarios/tinykube_device/protobuf StartWasmModuleCommandRequest.proto StartWasmModuleCommandResponse.proto DestroyWamrRuntimeCommandResponse.proto
 ```
-# flowchat
-* Start a wasm module and check wasm status
-
-![start_wasm_module](./start_wasm_module.png)
-
-* Stop a wasm module before it is completed.
-
-![stop_wasm_module](./stop_wasm_module.png)

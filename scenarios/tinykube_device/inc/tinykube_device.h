@@ -5,34 +5,33 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include "wasm_export.h"
 
 #define WASM_MODULES_PATH "./wasm-module"
 
-enum WAMR_RUNTIME_STATUS {
+enum WASM_RUNTIME_STATE {
     WAMR_RUNTIME_NOT_CREATED = 0,
     WAMR_RUNTIME_CREATED = 1,
 };
 
-struct wamr_runtime_info {
-    char *heap_buf;
-    uint32_t heap_size;
-    enum WAMR_RUNTIME_STATUS status;
-};
-
-enum WASM_MODULE_STATUS {
-    // WASM_MODULE_EMPTY = 0,
+enum WASM_MODULE_STATE {
     WASM_MODULE_STOPPED = 0,
     WASM_MODULE_RUNNING = 1,
 };
 
-struct wasm_module_info {
+struct wasm_runtime_and_module_status {
+    enum WASM_RUNTIME_STATE runtime_state;
+    enum WASM_MODULE_STATE module_state;
+    char *runtime_lib_name;
     char *module_name;
-    enum WASM_MODULE_STATUS status;
+    time_t starting_time;
+    char *runtime_heap_buf;
+    uint32_t runtime_heap_size;
     wasm_module_t module;
     wasm_module_inst_t module_inst;
     wasm_exec_env_t exec_env;
-    char *buffer;
+    char *load_buffer;
 };
 
 struct wasm_runtime_thread_args {
@@ -48,7 +47,7 @@ struct wasm_runtime_thread_args {
 
 typedef void* (*ExecutorHandler)(void *);
 typedef void* (*ResetStatusHandler)(void *);
-typedef void* (*GetModuleStatusHandler)(void *, void *);
+typedef void* (*GetModuleStatusHandler)(void *);
 
 int create_wamr_runtime(uint32_t heap_size);
 int destroy_wamr_runtime();

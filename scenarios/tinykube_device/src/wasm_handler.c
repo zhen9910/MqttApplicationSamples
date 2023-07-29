@@ -11,55 +11,53 @@
 #include "bh_read_file.h"
 #include "tinykube_device.h"
 
-static struct wamr_runtime_info wamr_runtime_instance;
-static struct wasm_module_info wasm_module_instance[MAX_WASM_MODULE_NUM];
+static struct wasm_runtime_and_module_status wasm_instance;
 
 int open_runtime_lib();
 
 int create_wamr_runtime(uint32 heap_size)
 {
-    if (wamr_runtime_instance.status != WAMR_RUNTIME_NOT_CREATED) {
+    if (wasm_instance.runtime_state != WAMR_RUNTIME_NOT_CREATED) {
         printf("wamr runtime has been created already.\n");
         return -1;
     }
-    wamr_runtime_instance.heap_buf = malloc(heap_size);
-    if (wamr_runtime_instance.heap_buf == NULL) {
+    wasm_instance.runtime_heap_buf = malloc(heap_size);
+    if (wasm_instance.runtime_heap_buf == NULL) {
         printf("malloc heap buf failed.\n");
         return -1;
     }
-    wamr_runtime_instance.heap_size = heap_size;
+    wasm_instance.runtime_heap_size = heap_size;
 
-    // static char global_heap_buf[512 * 1024];
     RuntimeInitArgs init_args;
     memset(&init_args, 0, sizeof(RuntimeInitArgs));
 
     init_args.mem_alloc_type = Alloc_With_Pool;
-    init_args.mem_alloc_option.pool.heap_buf = wamr_runtime_instance.heap_buf;
-    init_args.mem_alloc_option.pool.heap_size = heap_size;
+    init_args.mem_alloc_option.pool.heap_buf = wasm_instance.runtime_heap_buf;
+    init_args.mem_alloc_option.pool.heap_size = wasm_instance.runtime_heap_size;
 
     if (!wasm_runtime_full_init(&init_args)) {
         printf("Init runtime environment failed.\n");
-        free(wamr_runtime_instance.heap_buf);
-        wamr_runtime_instance.heap_buf = NULL;
-        wamr_runtime_instance.heap_size = 0;
+        free(wasm_instance.runtime_heap_buf);
+        wasm_instance.runtime_heap_buf = NULL;
+        wasm_instance.runtime_heap_size = 0;
         return -1;
     }
-    wamr_runtime_instance.status = WAMR_RUNTIME_CREATED;
+    wasm_instance.runtime_state = WAMR_RUNTIME_CREATED;
     printf("\n\n------ Created wamr runtime with heapsize %d bytes -------.\n\n", heap_size);
     return 0;
 }
 
 int destroy_wamr_runtime()
 {
-    if (wamr_runtime_instance.status != WAMR_RUNTIME_CREATED) {
+    if (wasm_instance.runtime_state != WAMR_RUNTIME_CREATED) {
         printf("wamr runtime has not been created yet.\n");
         return -1;
     }
     wasm_runtime_destroy();
-    free(wamr_runtime_instance.heap_buf);
-    wamr_runtime_instance.heap_buf = NULL;
-    wamr_runtime_instance.heap_size = 0;
-    wamr_runtime_instance.status = WAMR_RUNTIME_NOT_CREATED;
+    free(wasm_instance.runtime_heap_buf);
+    wasm_instance.runtime_heap_buf = NULL;
+    wasm_instance.runtime_heap_size = 0;
+    wasm_instance.runtime_state = WAMR_RUNTIME_NOT_CREATED;
     printf("\n\n------ Destroyed wamr runtime -------.\n\n");
     return 0;
 }
@@ -187,11 +185,12 @@ int start_wasm_module(char *wasm_module_name)
         goto fail;
     }
 
-    wasm_module_instance[0].module_name = wasm_module_name;
-    wasm_module_instance[0].status = WASM_MODULE_RUNNING;
-    wasm_module_instance[0].module = module;
-    wasm_module_instance[0].module_inst = module_inst;
-    wasm_module_instance[0].exec_env = exec_env;
+    wasm_instance.module_name = wasm_module_name;
+    wasm_instance.module_state = WASM_MODULE_RUNNING;
+    wasm_instance.module = module;
+    wasm_instance.module_inst = module_inst;
+    wasm_instance.exec_env = exec_env;
+    wasm_instance.load_buffer = buffer;
 
     if (buffer)
         BH_FREE(buffer);
@@ -214,10 +213,10 @@ fail:
 
 int stop_wasm_module(char *wasm_module_name)
 {
-    wasm_module_instance[0].status = WASM_MODULE_STOPPED;
-    wasm_runtime_destroy_exec_env(wasm_module_instance[0].exec_env);
-    wasm_runtime_deinstantiate(wasm_module_instance[0].module_inst);
-    wasm_runtime_unload(wasm_module_instance[0].module);
+    wasm_instance.module_state = WASM_MODULE_STOPPED;
+    wasm_runtime_destroy_exec_env(wasm_instance.exec_env);
+    wasm_runtime_deinstantiate(wasm_instance.module_inst);
+    wasm_runtime_unload(wasm_instance.module);
 
     printf("stop_wasm_module().\n");
     return 0;
@@ -233,14 +232,13 @@ GetModuleStatusHandler getWasmStatusFunc = NULL;
 
 int stop_wasm_module_v2(char *wasm_module_name)
 {
-    struct wasm_module_info module_info = {0};
-    struct wamr_runtime_info runtime_info = {0};
-    (*getWasmStatusFunc)(&module_info, &runtime_info);
-    printf("[%s]: module_info.module_name = %s\n", __func__, module_info.module_name);
-    printf("[%s]: module_info.status = %d\n", __func__, module_info.status);
-    printf("[%s]: runtime_info.status = %d\n", __func__, runtime_info.status);
+    struct wasm_runtime_and_module_status wasm_info = {0};
+    (*getWasmStatusFunc)(&wasm_info);
+    printf("[%s]: module_name = %s\n", __func__, wasm_info.module_name);
+    printf("[%s]: runtime_status = %d\n", __func__, wasm_info.runtime_state);
+    printf("[%s]: module_status = %d\n", __func__, wasm_info.module_state);
 
-    if (runtime_info.status == WAMR_RUNTIME_CREATED)
+    if (wasm_info.runtime_state == WAMR_RUNTIME_CREATED)
     {
         printf("[%s]: sending cancelation request\n", __func__);
         pthread_cancel(thread_exec);
@@ -263,18 +261,16 @@ int start_wasm_module_v2(char *wasm_module_name)
 {
     int ret;
     printf("[%s]: wasm_module_name = %s\n", __func__, wasm_module_name);
-
+    struct wasm_runtime_and_module_status wasm_info = {0};
+    (*getWasmStatusFunc)(&wasm_info);
     args.module_name = wasm_module_name;
     args.heap_size = 512 * 1024;
-    struct wasm_module_info module_info = {0};
-    struct wamr_runtime_info runtime_info = {0};
-    (*getWasmStatusFunc)(&module_info, &runtime_info);
-    printf("[%s]: module_info.module_name = %s\n", __func__, module_info.module_name);
-    printf("[%s]: module_info.status = %d\n", __func__, module_info.status);
-    printf("[%s]: runtime_info.status = %d\n", __func__, runtime_info.status);
+    printf("[%s]: module_name = %s\n", __func__, wasm_info.module_name);
+    printf("[%s]: runtime_status = %d\n", __func__, wasm_info.runtime_state);
+    printf("[%s]: module_status = %d\n", __func__, wasm_info.module_state);
 
     // Call the function
-    if (runtime_info.status == WAMR_RUNTIME_CREATED) {
+    if (wasm_info.runtime_state == WAMR_RUNTIME_CREATED) {
         printf("[%s]: Thread is already running.\n", __func__);
     } else {
         ret = pthread_create(&thread_exec, NULL, (void* (*)(void*))execFunc, (void*)&args);

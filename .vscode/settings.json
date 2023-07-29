@@ -1,6 +1,15 @@
 {
     "files.associations": {
         "startwasmmodulecommandresponse.pb-c.h": "c",
-        "stopwasmmodulecommandrequest.pb-c.h": "c"
+        "stopwasmmodulecommandrequest.pb-c.h": "c",
+        "compare": "c",
+        "cstddef": "c",
+        "cwchar": "c",
+        "string": "c",
+        "vector": "c",
+        "memory_resource": "c",
+        "string_view": "c",
+        "type_traits": "c",
+        "new": "c"
     }
 }

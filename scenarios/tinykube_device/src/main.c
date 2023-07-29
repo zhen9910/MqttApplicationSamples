@@ -35,8 +35,12 @@
 #define CMD_DESTROY_WAMR_RUNTIME  "destroyWamrRuntime"
 #define CMD_ADD_WASM_MODULE       "addWasmModule"
 #define CMD_REMOVE_WASM_MODULE    "removeWasmModule"
+#define CMD_ADD_WASM_RUNTIME       "addWasmRuntime"
+#define CMD_REMOVE_WASM_RUNTIME    "removeWasmRuntime"
 #define CMD_START_WASM_MODULE     "startWasmModule"
 #define CMD_STOP_WASM_MODULE      "stopWasmModule"
+#define CMD_CHECK_WASM_STATUS      "checkWasmStatus"
+
 
 #define QOS_LEVEL 1
 #define MQTT_VERSION MQTT_PROTOCOL_V5
@@ -540,15 +544,9 @@ void handle_message(
     }
 
     if (strcmp(topicName + 1, CMD_CREATR_WAMR_RUNTIME) == 0) {
-        printf("Creating WAMR runtime.\n");
-        if (process_create_wamr_runtime_request(mosq, message, props) != 0) {
-            printf("Failed to create WAMR runtime.\n");
-        }
+        printf("\n[Deprecated] Creating WAMR runtime.\n");
     } else if (strcmp(topicName + 1, CMD_DESTROY_WAMR_RUNTIME) == 0) {
-        printf("Destroying WAMR runtime.\n");
-        if (process_destroy_wamr_runtime_request(mosq, message, props) != 0) {
-            printf("Failed to destroy WAMR runtime.\n");
-        }
+        printf("\n[Deprecated] Destroying WAMR runtime.\n");
     } else if (strcmp(topicName + 1, CMD_ADD_WASM_MODULE) == 0) {
         printf("Adding WASM module.\n");
         if (process_add_wasm_module_request(mosq, message, props) != 0) {
